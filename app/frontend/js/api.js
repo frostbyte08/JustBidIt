@@ -4,7 +4,7 @@
 // Change this to your Railway URL after deploying the backend
 const API = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
   ? "http://localhost:8000"
-  : "https://justbidit-production.up.railway.app/";  // ← UPDATE THIS after Railway deploy
+  : "https://justbidit-production.up.railway.app";  // ← UPDATE THIS after Railway deploy
 
 const state = {
   tenderId:  null,
