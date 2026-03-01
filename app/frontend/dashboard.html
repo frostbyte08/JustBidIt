@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JustBidIt — Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;900&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="app">
+
+  <aside class="sidebar">
+    <div class="sidebar-brand">Just<span>BidIt</span></div>
+
+    <div class="sidebar-section-label">Workspace</div>
+    <nav class="sidebar-nav">
+      <div class="nav-item active" onclick="showPage('analyze')">
+        <span class="nav-item-icon">01</span> Analyze Tender
+      </div>
+      <div class="nav-item" onclick="showPage('company')">
+        <span class="nav-item-icon">02</span> Company Profile
+      </div>
+      <div class="nav-item" onclick="showPage('history')">
+        <span class="nav-item-icon">03</span> Tender History
+      </div>
+    </nav>
+
+    <div class="sidebar-section-label">Account</div>
+    <nav class="sidebar-nav" style="flex:0">
+      <div class="nav-item" onclick="window.location.href='index.html'">
+        <span class="nav-item-icon">--</span> Home
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="sidebar-user-avatar" id="sidebarAvatar">?</div>
+        <div class="sidebar-user-info">
+          <div class="sidebar-user-name" id="sidebarName">Loading...</div>
+          <div class="sidebar-user-role">MSME Member</div>
+        </div>
+      </div>
+      <button class="btn btn-ghost btn-full btn-sm" onclick="logout()" style="justify-content:flex-start; color:var(--red);">
+        Sign Out
+      </button>
+    </div>
+  </aside>
+
+  <div class="app-main">
+
+    <div class="topbar">
+      <div class="topbar-left">
+        <div class="topbar-title" id="topbarTitle">Analyze Tender</div>
+        <div class="breadcrumb">
+          <span>Dashboard</span>
+          <span class="breadcrumb-sep">/</span>
+          <span id="breadcrumbCurrent">Analyze</span>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <div class="api-pill" id="apiPill">
+          <div class="api-dot"></div>
+          <span id="apiPillText">Checking...</span>
+        </div>
+        <div class="profile-menu">
+          <div class="profile-btn" onclick="toggleProfileMenu()">
+            <div class="profile-avatar" id="topbarAvatar">?</div>
+            <span class="profile-name" id="topbarName">Account</span>
+          </div>
+          <div class="profile-dropdown" id="profileDropdown">
+            <a onclick="showPage('company')">Company Profile</a>
+            <a onclick="showPage('history')">Tender History</a>
+            <a onclick="clearUserData()">Clear Saved Data</a>
+            <a class="danger" onclick="logout()">Sign Out</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="page-analyze" class="page">
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Step 1 — Upload Tender Document</span>
+          <span id="tenderLoadedBadge" style="display:none;" class="status-pill extracted">Tender Loaded</span>
+        </div>
+        <div class="card-body">
+          <div class="upload-zone" id="uploadZone"
+            onclick="document.getElementById('fileInput').click()"
+            ondragover="onDragOver(event)" ondrop="onDrop(event)" ondragleave="this.classList.remove('drag-over')">
+            <input type="file" id="fileInput" hidden accept=".pdf" onchange="onFileSelect(event)">
+            <div class="upload-zone-icon">PDF</div>
+            <h3>Drop your tender PDF here</h3>
+            <p>Supports GeM, CPPP, NIC and state portal tender documents</p>
+            <button class="btn btn-primary" onclick="event.stopPropagation(); document.getElementById('fileInput').click()">
+              Choose File
+            </button>
+          </div>
+
+          <div id="tenderSummary" style="display:none; margin-top:20px;">
+            <div class="info-table" id="tenderSummaryContent"></div>
+            <button class="btn btn-secondary btn-sm" style="margin-top:14px;"
+              onclick="document.getElementById('fileInput').click()">
+              Upload Different Tender
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" id="complianceCard">
+        <div class="card-header">
+          <span class="card-title">Step 2 — Compliance Check</span>
+          <button class="btn btn-primary btn-sm" onclick="runCompliance()" id="complianceBtn">
+            Run Check
+          </button>
+        </div>
+        <div class="card-body" id="complianceBody">
+          <div class="empty-state">
+            <h4>No compliance data yet</h4>
+            <p>Upload a tender and save your company profile, then click Run Check.</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div id="page-company" class="page" style="display:none;">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Company Profile</span>
+          <span id="companySavedBadge" style="display:none;" class="status-pill extracted">Saved</span>
+        </div>
+        <div class="card-body">
+          <div class="form-grid">
+            <div class="form-group required full">
+              <label>Company Name</label>
+              <input class="form-input" type="text" id="companyName" placeholder="TechSolve Innovations Pvt. Ltd.">
+            </div>
+            <div class="form-group required">
+              <label>Annual Turnover (Lakhs)</label>
+              <input class="form-input" type="number" id="annualTurnover" placeholder="35">
+            </div>
+            <div class="form-group required">
+              <label>Years in Operation</label>
+              <input class="form-input" type="number" id="yearsOp" placeholder="4">
+            </div>
+            <div class="form-group">
+              <label>Net Worth (Lakhs)</label>
+              <input class="form-input" type="number" id="netWorth" placeholder="20">
+            </div>
+            <div class="form-group">
+              <label>MSME Category</label>
+              <select class="form-input" id="msmeCategory">
+                <option value="">Select</option>
+                <option value="micro">Micro</option>
+                <option value="small">Small</option>
+                <option value="medium">Medium</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>GST Number</label>
+              <input class="form-input" type="text" id="gstNum" placeholder="07AABCT1234C1Z5">
+            </div>
+            <div class="form-group">
+              <label>PAN Number</label>
+              <input class="form-input" type="text" id="panNum" placeholder="AABCT1234C">
+            </div>
+            <div class="form-group">
+              <label>Registration Number</label>
+              <input class="form-input" type="text" id="regNum" placeholder="U72200DL2020PTC123456">
+            </div>
+            <div class="form-group">
+              <label>Udyam / MSME Number</label>
+              <input class="form-input" type="text" id="udyamNum" placeholder="UDYAM-DL-01-0012345">
+            </div>
+            <div class="form-group full">
+              <label>Certifications (press Enter to add)</label>
+              <div class="tag-wrap" id="certWrap" onclick="document.getElementById('certInput').focus()">
+                <input type="text" id="certInput" class="form-input" placeholder="e.g. ISO 9001:2015"
+                  onkeydown="addTag(event,'certInput','certList','certWrap')">
+              </div>
+            </div>
+            <div class="form-group full">
+              <label>Available Documents (press Enter to add)</label>
+              <div class="tag-wrap" id="docWrap" onclick="document.getElementById('docInput').focus()">
+                <input type="text" id="docInput" class="form-input" placeholder="e.g. GST Certificate"
+                  onkeydown="addTag(event,'docInput','docList','docWrap')">
+              </div>
+            </div>
+            <div class="form-group full">
+              <label>Past Projects</label>
+              <div id="projectsList" style="display:flex;flex-direction:column;gap:10px;margin-bottom:10px;"></div>
+              <div style="background:var(--ink-3);border:1px solid var(--border);border-radius:var(--radius);padding:16px;">
+                <div style="font-family:var(--font-mono);font-size:0.68rem;letter-spacing:0.08em;color:var(--text-3);margin-bottom:12px;">ADD PROJECT</div>
+                <div class="form-grid" style="gap:10px;">
+                  <div class="form-group" style="margin-bottom:0;">
+                    <label>Project Name</label>
+                    <input class="form-input" type="text" id="projName" placeholder="School ERP System">
+                  </div>
+                  <div class="form-group" style="margin-bottom:0;">
+                    <label>Client</label>
+                    <input class="form-input" type="text" id="projClient" placeholder="Delhi Education Dept">
+                  </div>
+                  <div class="form-group" style="margin-bottom:0;">
+                    <label>Value (Lakhs)</label>
+                    <input class="form-input" type="number" id="projValue" placeholder="12">
+                  </div>
+                  <div class="form-group" style="margin-bottom:0;">
+                    <label>Year Completed</label>
+                    <input class="form-input" type="number" id="projYear" placeholder="2023">
+                  </div>
+                </div>
+                <button class="btn btn-secondary btn-sm" style="margin-top:12px;" onclick="addProject()">+ Add Project</button>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex; gap:12px; margin-top:8px;">
+            <button class="btn btn-primary" onclick="doSaveCompany()" style="flex:1;">Save Profile</button>
+            <button class="btn btn-secondary" onclick="loadSavedCompanyForm()">Reload Saved</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="page-history" class="page" style="display:none;">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Tender History</span>
+          <button class="btn btn-secondary btn-sm" onclick="loadHistory()">Refresh</button>
+        </div>
+        <div id="historyBody"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="js/api.js"></script>
+<script src="js/dashboard.js"></script>
+</body>
+</html>

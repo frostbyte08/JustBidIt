@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JustBidIt — AI Tender Intelligence for MSMEs</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;900&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="navbar">
+  <div class="nav-inner">
+    <div class="logo">Just<span>BidIt</span></div>
+    <nav class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#how">How it works</a>
+      <a href="login.html">Sign in</a>
+      <a href="register.html" class="btn btn-primary nav-cta">Get Started</a>
+    </nav>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="hero-inner">
+    <div>
+      <div class="hero-tag fade-up">AI-Powered Procurement Intelligence</div>
+      <h1 class="fade-up">Win Government<br>Tenders with <em>Clarity</em></h1>
+      <p class="hero-desc fade-up">
+        Upload any tender PDF. Get an instant compliance score, identify every gap,
+        and generate a professional bid proposal — all in under 60 seconds.
+        Built for Indian MSMEs.
+      </p>
+      <div class="hero-actions fade-up">
+        <a href="register.html" class="btn btn-primary btn-lg">Start for Free</a>
+        <a href="#how" class="btn btn-secondary btn-lg">See How it Works</a>
+      </div>
+      <div class="hero-metrics fade-up">
+        <div class="metric"><h3>60s</h3><p>PDF to compliance score</p></div>
+        <div class="metric"><h3>90%</h3><p>Less manual review time</p></div>
+        <div class="metric"><h3>Free</h3><p>No credit card required</p></div>
+      </div>
+    </div>
+
+    <div class="hero-card fade-up">
+      <div class="hcard-label">LIVE COMPLIANCE ANALYSIS</div>
+      <div style="font-size:0.8rem; color:var(--text-3); font-family:var(--font-mono); margin-bottom:16px;">
+        GeM Bid — Department of Space
+      </div>
+      <div class="hcard-score">
+        <div class="score-big" id="heroScore">0</div>
+        <div>
+          <div class="score-verdict">LIKELY ELIGIBLE</div>
+          <div style="font-size:0.75rem; color:var(--text-3); margin-top:6px; font-family:var(--font-mono);">2 gaps identified</div>
+        </div>
+      </div>
+      <div class="hcard-gaps">
+        <div class="hcard-gap">
+          <span class="hcard-gap-name">Annual Turnover</span>
+          <span class="hcard-gap-val ok">MEETS REQUIREMENT</span>
+        </div>
+        <div class="hcard-gap">
+          <span class="hcard-gap-name">OEM Authorization</span>
+          <span class="hcard-gap-val bad">MISSING</span>
+        </div>
+        <div class="hcard-gap">
+          <span class="hcard-gap-name">MSME Preference</span>
+          <span class="hcard-gap-val ok">ELIGIBLE</span>
+        </div>
+        <div class="hcard-gap">
+          <span class="hcard-gap-name">Financial Document</span>
+          <span class="hcard-gap-val warn">NOT UPLOADED</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="features" style="background:var(--ink-2); border-top:1px solid var(--border);">
+  <div class="section-inner">
+    <div class="section-eyebrow">Capabilities</div>
+    <h2 class="section-title">Everything you need to bid smarter</h2>
+    <p class="section-desc">
+      Four AI-powered tools that replace hours of manual tender review with seconds of automated analysis.
+    </p>
+    <div class="feature-grid">
+      <div class="feature-cell fade-up">
+        <div class="feat-icon">01 — EXTRACT</div>
+        <h3 class="feat-title">PDF Intelligence</h3>
+        <p class="feat-desc">Upload any GeM, CPPP or state portal tender. AI reads every clause and outputs structured eligibility data — turnover, certifications, experience, deadlines.</p>
+      </div>
+      <div class="feature-cell fade-up">
+        <div class="feat-icon">02 — SCORE</div>
+        <h3 class="feat-title">Compliance Engine</h3>
+        <p class="feat-desc">A transparent 100-point rule-based scoring system with exact deductions per gap. Know precisely where you stand before investing time in a bid.</p>
+      </div>
+      <div class="feature-cell fade-up">
+        <div class="feat-icon">03 — DRAFT</div>
+        <h3 class="feat-title">Bid Generation</h3>
+        <p class="feat-desc">One-click generation of a complete 9-section professional bid proposal, personalised to the tender and your company profile.</p>
+      </div>
+      <div class="feature-cell fade-up">
+        <div class="feat-icon">04 — ASK</div>
+        <h3 class="feat-title">AI Copilot</h3>
+        <p class="feat-desc">Ask any question about the tender in plain language. Eligibility rules, document requirements, consortium provisions — instant, precise answers.</p>
+      </div>
+      <div class="feature-cell fade-up">
+        <div class="feat-icon">05 — INDIA</div>
+        <h3 class="feat-title">India-First</h3>
+        <p class="feat-desc">Built for the Indian procurement ecosystem. Understands Udyam, MSME exemptions, GeM portal rules, GFR regulations, and consortium provisions.</p>
+      </div>
+      <div class="feature-cell fade-up">
+        <div class="feat-icon">06 — SECURE</div>
+        <h3 class="feat-title">Secure & Private</h3>
+        <p class="feat-desc">JWT-authenticated accounts. Your tender data and company profile stay private. No third parties. Your bids, your data.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="how">
+  <div class="section-inner">
+    <div class="section-eyebrow">Workflow</div>
+    <h2 class="section-title">From PDF to bid in four steps</h2>
+    <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:var(--border); border:1px solid var(--border); border-radius:var(--radius-2); overflow:hidden; margin-top:48px;">
+      <div style="background:var(--ink-2); padding:32px 28px;">
+        <div style="font-family:var(--font-mono); font-size:0.65rem; letter-spacing:0.1em; color:var(--green); margin-bottom:16px;">STEP 01</div>
+        <h3 style="font-size:1rem; margin-bottom:10px; font-family:var(--font-display);">Upload Tender PDF</h3>
+        <p style="font-size:0.84rem; color:var(--text-2); line-height:1.7;">Drop any government tender PDF. AI extracts all eligibility criteria instantly.</p>
+      </div>
+      <div style="background:var(--ink-2); padding:32px 28px; border-left:1px solid var(--border);">
+        <div style="font-family:var(--font-mono); font-size:0.65rem; letter-spacing:0.1em; color:var(--green); margin-bottom:16px;">STEP 02</div>
+        <h3 style="font-size:1rem; margin-bottom:10px; font-family:var(--font-display);">Add Company Profile</h3>
+        <p style="font-size:0.84rem; color:var(--text-2); line-height:1.7;">Enter your turnover, certifications, and past projects once. Reuse forever.</p>
+      </div>
+      <div style="background:var(--ink-2); padding:32px 28px; border-left:1px solid var(--border);">
+        <div style="font-family:var(--font-mono); font-size:0.65rem; letter-spacing:0.1em; color:var(--green); margin-bottom:16px;">STEP 03</div>
+        <h3 style="font-size:1rem; margin-bottom:10px; font-family:var(--font-display);">Get Compliance Score</h3>
+        <p style="font-size:0.84rem; color:var(--text-2); line-height:1.7;">Receive a detailed score with every gap identified and how to fix it.</p>
+      </div>
+      <div style="background:var(--ink-2); padding:32px 28px; border-left:1px solid var(--border);">
+        <div style="font-family:var(--font-mono); font-size:0.65rem; letter-spacing:0.1em; color:var(--green); margin-bottom:16px;">STEP 04</div>
+        <h3 style="font-size:1rem; margin-bottom:10px; font-family:var(--font-display);">Generate Bid Draft</h3>
+        <p style="font-size:0.84rem; color:var(--text-2); line-height:1.7;">One-click AI proposal generation. Download and submit.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="cta-section">
+  <h2>Ready to bid smarter?</h2>
+  <p>Create your free account and analyze your first tender in under two minutes.</p>
+  <a href="register.html" class="btn btn-primary btn-lg">Get Started Free</a>
+</section>
+
+<footer class="footer">
+  <div class="footer-logo">Just<span>BidIt</span></div>
+  <div class="footer-copy">© 2026 JustBidIt — Built for Indian MSMEs</div>
+</footer>
+
+<script src="js/api.js"></script>
+<script>
+  loadState();
+  if (getToken()) {
+    document.querySelector('.nav-links a[href="login.html"]').textContent = "Dashboard";
+    document.querySelector('.nav-links a[href="login.html"]').href = "dashboard.html";
+  }
+
+  let n = 0;
+  const target = 75;
+  const el = document.getElementById("heroScore");
+  const iv = setInterval(() => {
+    n = Math.min(n + 2, target);
+    el.textContent = n;
+    if (n >= target) clearInterval(iv);
+  }, 25);
+
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) e.target.classList.add("visible"); });
+  }, { threshold: 0.1 });
+  document.querySelectorAll(".fade-up").forEach(el => obs.observe(el));
+</script>
+</body>
+</html>
