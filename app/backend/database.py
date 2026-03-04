@@ -9,7 +9,6 @@ load_dotenv()
 # Supports both SQLite (local dev) and PostgreSQL (production)
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./justbidit.db")
 
-# Railway provides PostgreSQL URLs starting with "postgres://"
 # SQLAlchemy requires "postgresql://" — fix it automatically
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)

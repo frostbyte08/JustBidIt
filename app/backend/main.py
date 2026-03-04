@@ -16,10 +16,9 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# ── Force CORS headers on every response ─────────────────────
+# forcing CORS headers on every response
 class ForceCORSMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
-        # Handle preflight
         if request.method == "OPTIONS":
             response = JSONResponse(content={}, status_code=200)
             response.headers["Access-Control-Allow-Origin"]  = "*"
@@ -36,20 +35,20 @@ class ForceCORSMiddleware(BaseHTTPMiddleware):
 
 app.add_middleware(ForceCORSMiddleware)
 
-# ── Routers ───────────────────────────────────────────────────
+#routers
 app.include_router(auth_router.router)
 app.include_router(tender.router)
 app.include_router(company.router)
 app.include_router(compliance.router)
 app.include_router(copilot.router)
 
-# ── Startup ───────────────────────────────────────────────────
+# startup
 @app.on_event("startup")
 def startup():
     create_tables()
     print("✓ Database tables ready")
 
-# ── Health ────────────────────────────────────────────────────
+# health
 @app.get("/health")
 def health():
     return {"status": "ok", "service": "JustBidIt API"}
