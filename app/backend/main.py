@@ -1,6 +1,8 @@
 import os
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -14,26 +16,25 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# ── CORS ──────────────────────────────────────────────────────
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+# ── Force CORS headers on every response ─────────────────────
+class ForceCORSMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        # Handle preflight
+        if request.method == "OPTIONS":
+            response = JSONResponse(content={}, status_code=200)
+            response.headers["Access-Control-Allow-Origin"]  = "*"
+            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+            response.headers["Access-Control-Allow-Headers"] = "*"
+            response.headers["Access-Control-Max-Age"]       = "86400"
+            return response
 
-origins = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "https://just-bid-it.vercel.app",
-    FRONTEND_URL,
-]
-# Remove empty strings
-origins = [o for o in origins if o]
+        response = await call_next(request)
+        response.headers["Access-Control-Allow-Origin"]  = "*"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+        response.headers["Access-Control-Allow-Headers"] = "*"
+        return response
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allow_headers=["*"],
-    expose_headers=["*"],
-)
+app.add_middleware(ForceCORSMiddleware)
 
 # ── Routers ───────────────────────────────────────────────────
 app.include_router(auth_router.router)
@@ -48,7 +49,7 @@ def startup():
     create_tables()
     print("✓ Database tables ready")
 
-# ── Health check ──────────────────────────────────────────────
+# ── Health ────────────────────────────────────────────────────
 @app.get("/health")
 def health():
     return {"status": "ok", "service": "JustBidIt API"}
