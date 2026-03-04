@@ -17,17 +17,22 @@ app = FastAPI(
 # ── CORS ──────────────────────────────────────────────────────
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
+origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "https://just-bid-it.vercel.app",
+    FRONTEND_URL,
+]
+# Remove empty strings
+origins = [o for o in origins if o]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "https://just-bid-it.vercel.app",
-        os.getenv("FRONTEND_URL", ""),
-    ],
+    allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # ── Routers ───────────────────────────────────────────────────
