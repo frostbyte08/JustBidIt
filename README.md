@@ -247,4 +247,4 @@ Indian MSMEs — the 63 million small businesses that collectively lose billions
 
 ---
 
-*Built with by Team JustBidIt*
+*Built with <3 by Team JustBidIt*
