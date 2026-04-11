@@ -1,41 +1,69 @@
+import google.generativeai as genai
 from groq import Groq
 import json
 import os
 import re
+import time
 from typing import Dict, List, Optional
 from dotenv import load_dotenv
 
 load_dotenv()
 
-GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
-PROMPT_DIR   = os.path.join(os.path.dirname(__file__), "..", "prompts")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+GROQ_API_KEY   = os.getenv("GROQ_API_KEY", "")
+PROMPT_DIR     = os.path.join(os.path.dirname(__file__), "..", "prompts")
 
-client = None
-if GROQ_API_KEY and GROQ_API_KEY != "your_groq_api_key_here":
-    client = Groq(api_key=GROQ_API_KEY)
-    print("✓ Groq API configured successfully")
+# ── Setup Gemini ──────────────────────────────────────────────
+gemini_model = None
+if GEMINI_API_KEY and GEMINI_API_KEY != "your_gemini_api_key_here":
+    genai.configure(api_key=GEMINI_API_KEY)
+    gemini_model = genai.GenerativeModel("gemini-2.0-flash")
+    print("✓ Gemini API configured")
 else:
-    print("(X) GROQ_API_KEY not set. Add it to .env file.")
+    print("(X) GEMINI_API_KEY not set")
+
+# ── Setup Groq (fallback) ─────────────────────────────────────
+groq_client = None
+if GROQ_API_KEY and GROQ_API_KEY != "your_groq_api_key_here":
+    groq_client = Groq(api_key=GROQ_API_KEY)
+    print("✓ Groq API configured (fallback)")
+else:
+    print("(X) GROQ_API_KEY not set")
 
 
-def _load_prompt(filename: str) -> str:
-    try:
-        with open(os.path.join(PROMPT_DIR, filename)) as f:
-            return f.read()
-    except FileNotFoundError:
-        return ""
+def _call_ai(prompt: str, temperature: float = 0.1, max_tokens: int = 2048) -> str:
+    """
+    Try Gemini first. If rate limited or unavailable, fall back to Groq.
+    """
+    # Try Gemini first
+    if gemini_model:
+        try:
+            response = gemini_model.generate_content(
+                prompt,
+                generation_config=genai.types.GenerationConfig(
+                    temperature=temperature,
+                    max_output_tokens=max_tokens,
+                )
+            )
+            return response.text
+        except Exception as e:
+            err = str(e).lower()
+            if "quota" in err or "rate" in err or "limit" in err or "429" in err:
+                print(f"Gemini rate limited — falling back to Groq")
+            else:
+                print(f"Gemini error: {e} — falling back to Groq")
 
+    # Fall back to Groq
+    if groq_client:
+        response = groq_client.chat.completions.create(
+            model       = "llama-3.3-70b-versatile",
+            messages    = [{"role": "user", "content": prompt}],
+            temperature = temperature,
+            max_tokens  = max_tokens,
+        )
+        return response.choices[0].message.content
 
-def _call_groq(prompt: str, temperature: float = 0.1, max_tokens: int = 2048) -> str:
-    if not client:
-        raise Exception("Groq API key not configured. Add GROQ_API_KEY to .env")
-    response = client.chat.completions.create(
-        model       = "llama-3.3-70b-versatile",
-        messages    = [{"role": "user", "content": prompt}],
-        temperature = temperature,
-        max_tokens  = max_tokens,
-    )
-    return response.choices[0].message.content
+    raise Exception("No AI provider available. Set GEMINI_API_KEY or GROQ_API_KEY in .env")
 
 
 def _parse_json(raw: str) -> Optional[Dict]:
@@ -69,8 +97,8 @@ def _parse_json(raw: str) -> Optional[Dict]:
 
 # ── 1. TENDER EXTRACTION ──────────────────────────────────────
 def extract_tender_structure(raw_text: str, sections: Optional[Dict] = None) -> Dict:
-    if not client:
-        return {"error": "Groq API key not configured. Add GROQ_API_KEY to .env"}
+    if not gemini_model and not groq_client:
+        return {"error": "No AI provider configured. Add GEMINI_API_KEY or GROQ_API_KEY to .env"}
 
     if sections:
         relevant = ""
@@ -108,16 +136,16 @@ OUTPUT FORMAT — return ONLY this JSON, no text before or after, no markdown fe
     "min_turnover": "number in INR Lakhs or null",
     "turnover_note": "exact clause text or null",
     "years_experience": "number or null",
-    "experience_note": "exact clause text describing experience requirement or null",
-    "required_certifications": ["list of required certs"],
+    "experience_note": "exact clause text or null",
+    "required_certifications": [],
     "msme_preference": true or false,
-    "msme_exemptions": ["list of exemptions for MSMEs if any"],
+    "msme_exemptions": [],
     "past_project_requirement": "description or null",
     "min_single_project_value": "number in INR Lakhs or null",
-    "other_requirements": ["any other eligibility conditions"]
+    "other_requirements": []
   }},
-  "documents_required": ["complete list of documents to submit"],
-  "key_clauses": ["important clauses bidders must know"],
+  "documents_required": [],
+  "key_clauses": [],
   "sector": "IT/Construction/Healthcare/Defence/Education/Supply/Services/Other",
   "bid_security": "amount and format or null",
   "contract_duration": "duration string or null",
@@ -128,48 +156,33 @@ TENDER TEXT:
 {text_to_send}"""
 
     try:
-        raw_response = _call_groq(prompt, temperature=0.0, max_tokens=2048)
+        raw_response = _call_ai(prompt, temperature=0.0, max_tokens=2048)
         parsed = _parse_json(raw_response)
 
         if parsed is None:
-            print(f"WARNING: Could not parse JSON. Raw response preview: {raw_response[:200]}")
+            print(f"WARNING: Could not parse JSON. Raw: {raw_response[:200]}")
             return {
-                "tender_id": None,
-                "title": "Tender (manual review needed)",
-                "issuing_authority": "Unknown",
-                "deadline": None,
-                "estimated_value": None,
+                "tender_id": None, "title": "Tender (manual review needed)",
+                "issuing_authority": "Unknown", "deadline": None, "estimated_value": None,
                 "eligibility": {
-                    "min_turnover": None,
-                    "turnover_note": None,
-                    "years_experience": None,
-                    "experience_note": None,
-                    "required_certifications": [],
-                    "msme_preference": False,
-                    "msme_exemptions": [],
-                    "past_project_requirement": None,
-                    "min_single_project_value": None,
-                    "other_requirements": []
+                    "min_turnover": None, "turnover_note": None, "years_experience": None,
+                    "experience_note": None, "required_certifications": [], "msme_preference": False,
+                    "msme_exemptions": [], "past_project_requirement": None,
+                    "min_single_project_value": None, "other_requirements": []
                 },
-                "documents_required": [],
-                "key_clauses": [],
-                "sector": "Unknown",
-                "bid_security": None,
-                "contract_duration": None,
-                "portal": "Unknown",
-                "_note": "AI extraction failed — please review the raw text manually"
+                "documents_required": [], "key_clauses": [], "sector": "Unknown",
+                "bid_security": None, "contract_duration": None, "portal": "Unknown",
+                "_note": "AI extraction failed — please review manually"
             }
-
         return parsed
-
     except Exception as e:
-        return {"error": f"Groq API error: {str(e)}"}
+        return {"error": f"AI error: {str(e)}"}
 
 
 # ── 2. BID DRAFT GENERATION ───────────────────────────────────
 def generate_bid_draft(tender_data: Dict, company_data: Dict, additional_context: Optional[str] = None) -> str:
-    if not client:
-        return "Error: Groq API key not configured."
+    if not gemini_model and not groq_client:
+        return "Error: No AI provider configured."
 
     projects = company_data.get("past_projects", [])
     projects_text = "\n".join([
@@ -178,11 +191,11 @@ def generate_bid_draft(tender_data: Dict, company_data: Dict, additional_context
         for p in projects[:5]
     ]) or "  • No past projects listed"
 
+    elig = tender_data.get("eligibility", {})
     certs = ", ".join(company_data.get("certifications", [])) or "None listed"
     docs  = ", ".join(tender_data.get("documents_required", [])) or "As per tender"
-    elig  = tender_data.get("eligibility", {})
 
-    prompt = f"""You are a senior procurement consultant in India who has helped 200+ MSMEs win government tenders worth over Rs.500 Crore. You write compelling, precise, professionally formatted bid proposals that win contracts.
+    prompt = f"""You are a senior procurement consultant in India who has helped 200+ MSMEs win government tenders worth over Rs.500 Crore.
 
 TENDER DETAILS:
 - Title: {tender_data.get('title', 'N/A')}
@@ -193,7 +206,7 @@ TENDER DETAILS:
 - Deadline: {tender_data.get('deadline', 'N/A')}
 - Min Turnover Required: Rs.{elig.get('min_turnover', 'N/A')} Lakhs
 - Experience Required: {elig.get('years_experience', 'N/A')} years
-- Required Certifications: {', '.join(elig.get('required_certifications', [])) or 'None specified'}
+- Required Certifications: {', '.join(elig.get('required_certifications', [])) or 'None'}
 - MSME Preference: {'Yes' if elig.get('msme_preference') else 'No'}
 - Documents Required: {docs}
 
@@ -202,130 +215,69 @@ COMPANY PROFILE:
 - MSME Category: {company_data.get('msme_category', 'MSME').upper()}
 - Annual Turnover: Rs.{company_data.get('annual_turnover', 0)} Lakhs
 - Years in Operation: {company_data.get('years_in_operation', 0)} years
-- Certifications Held: {certs}
-- GST Number: {company_data.get('gst_number', 'As per records')}
-- Registration: {company_data.get('registration_number', 'As per records')}
+- Certifications: {certs}
+- GST: {company_data.get('gst_number', 'As per records')}
 - Past Projects:
 {projects_text}
 
 {f'SPECIAL INSTRUCTIONS: {additional_context}' if additional_context else ''}
 
-WRITING GUIDELINES:
-- Use formal, confident government procurement language
-- Reference SPECIFIC numbers and facts from the data above — never write generic filler
-- Highlight MSME status prominently if applicable
-- In past experience, directly connect each project to the tender requirements
-- In compliance section, address EACH eligibility criterion one by one
-- Make the proposal feel bespoke to this exact tender, not a template
-- Use "we" and "our company" — first person plural throughout
-
-Write the complete bid proposal with ALL 9 sections below. Each section must be substantive (minimum 3-4 sentences), specific and reference actual data:
+Write a complete professional bid proposal with ALL 9 sections. Reference specific numbers and facts throughout:
 
 # BID PROPOSAL
 ## {tender_data.get('title', 'Tender Response')}
 ### Submitted by: {company_data.get('name')}
 
----
-
 ## 1. COVER LETTER
-[Formal opening addressed to {tender_data.get('issuing_authority', 'the Authority')}, reference tender title, express intent to bid, highlight 2-3 key strengths, close with availability for clarifications]
-
 ## 2. COMPANY OVERVIEW
-[Company name, MSME category, years in operation, turnover, core competencies, geographic presence, mission statement]
-
 ## 3. TECHNICAL COMPLIANCE STATEMENT
-[Address each eligibility criterion explicitly — turnover, experience, certifications, MSME status — with actual figures showing compliance or near-compliance]
-
 ## 4. SCOPE UNDERSTANDING & APPROACH
-[Demonstrate deep understanding of the work required, proposed methodology, timeline, key milestones, risk mitigation]
-
 ## 5. RELEVANT PAST EXPERIENCE
-[Detail each past project — name, client, value, scope, outcomes — and explicitly link it to this tender's requirements]
-
 ## 6. TEAM & RESOURCE PLAN
-[Key personnel roles, qualifications, dedicated team size, infrastructure and tools available]
-
-## 7. QUALITY ASSURANCE & DELIVERY COMMITMENT
-[QA processes, certifications backing them, escalation procedures, SLA commitments, penalty acceptance]
-
-## 8. DECLARATIONS & COMPLIANCE STATEMENTS
-[Blacklisting declaration, no conflict of interest, acceptance of all tender terms, EMD/bid security details, signatory authority]
-
+## 7. QUALITY ASSURANCE
+## 8. DECLARATIONS & COMPLIANCE
 ## 9. DOCUMENT INDEX
-[Numbered list of all documents being submitted with this proposal]
 
 ---
 *Authorised Signatory | {company_data.get('name')} | Date: ___________*
 """
     try:
-        return _call_groq(prompt, temperature=0.3, max_tokens=4096)
+        return _call_ai(prompt, temperature=0.3, max_tokens=4096)
     except Exception as e:
         return f"Error generating draft: {str(e)}"
 
 
 # ── 3. COPILOT Q&A ────────────────────────────────────────────
 def copilot_answer(tender_data: Dict, question: str, conversation_history: List[Dict]) -> str:
-    if not client:
-        return "Error: Groq API key not configured."
+    if not gemini_model and not groq_client:
+        return "Error: No AI provider configured."
 
     history_text = ""
     for msg in conversation_history[-8:]:
         role = "Bidder" if msg["role"] == "user" else "Consultant"
         history_text += f"{role}: {msg['content']}\n\n"
 
-    tender_summary = f"""
-Tender: {tender_data.get('title', 'N/A')}
-Authority: {tender_data.get('issuing_authority', 'N/A')}
-Deadline: {tender_data.get('deadline', 'N/A')}
-Sector: {tender_data.get('sector', 'N/A')}
-Estimated Value: Rs.{tender_data.get('estimated_value', 'N/A')} Lakhs
-Min Turnover: Rs.{tender_data.get('eligibility', {}).get('min_turnover', 'N/A')} Lakhs
-Experience Required: {tender_data.get('eligibility', {}).get('years_experience', 'N/A')} years
-Required Certifications: {', '.join(tender_data.get('eligibility', {}).get('required_certifications', [])) or 'None'}
-MSME Preference: {'Yes' if tender_data.get('eligibility', {}).get('msme_preference') else 'No'}
-Documents Required: {', '.join(tender_data.get('documents_required', [])) or 'See tender'}
-Bid Security: {tender_data.get('bid_security', 'N/A')}
-Key Clauses: {'; '.join(tender_data.get('key_clauses', [])) or 'None extracted'}
-"""
+    prompt = f"""You are an expert Indian government procurement consultant.
 
-    prompt = f"""You are an expert Indian government procurement consultant with deep knowledge of:
-- GeM portal, CPPP, NIC eProcurement systems
-- GFR 2017 rules and CVC guidelines
-- MSME procurement policy (25% reservation, EMD exemption, price preference)
-- Tender evaluation criteria and L1 bidding
-- Consortium and joint venture provisions
-- Common disqualification reasons and how to avoid them
-
-TENDER INFORMATION:
-{tender_summary}
-
-FULL TENDER DATA:
+TENDER:
 {json.dumps(tender_data, indent=2)}
 
-{f"CONVERSATION SO FAR:{chr(10)}{history_text}" if history_text else ""}
+{f"CONVERSATION:{chr(10)}{history_text}" if history_text else ""}
 
-BIDDER'S QUESTION: {question}
+QUESTION: {question}
 
-ANSWER GUIDELINES:
-- Be direct and specific — lead with the answer, then explain
-- Always cite the exact requirement from the tender when relevant
-- If the question is about eligibility, give a clear YES/NO/CONDITIONAL verdict first
-- If documents are asked about, list them clearly and numbered
-- If you're unsure about something not in the tender data, say so honestly
-- Keep answers concise (3-6 sentences) unless a detailed explanation is needed
-- Use Indian procurement terminology (EMD, L1, GeM, MSME, etc.)
-- If there's a risk or important caveat, highlight it clearly
+Answer directly and specifically. Give YES/NO/CONDITIONAL verdict for eligibility questions. Be concise.
 """
     try:
-        return _call_groq(prompt, temperature=0.2, max_tokens=1024)
+        return _call_ai(prompt, temperature=0.2, max_tokens=1024)
     except Exception as e:
         return f"Error: {str(e)}"
 
 
 # ── 4. COMPLIANCE GAP ANALYSIS ────────────────────────────────
 def analyze_compliance_gaps(tender_data: Dict, company_data: Dict, gaps: List[Dict]) -> str:
-    if not client:
-        return "AI analysis unavailable — add GROQ_API_KEY to .env"
+    if not gemini_model and not groq_client:
+        return "AI analysis unavailable — add GEMINI_API_KEY or GROQ_API_KEY to .env"
 
     elig = tender_data.get("eligibility", {})
     disqualifying = [g for g in gaps if "DISQUALIFYING" in g.get("severity", "").upper()]
@@ -334,64 +286,31 @@ def analyze_compliance_gaps(tender_data: Dict, company_data: Dict, gaps: List[Di
 
     gaps_summary = ""
     if disqualifying:
-        gaps_summary += f"\nDISQUALIFYING GAPS ({len(disqualifying)}):\n"
-        gaps_summary += "\n".join([f"  - {g.get('field')}: {g.get('note', '')}" for g in disqualifying])
+        gaps_summary += f"\nDISQUALIFYING ({len(disqualifying)}):\n"
+        gaps_summary += "\n".join([f"  - {g.get('field')}: {g.get('note','')}" for g in disqualifying])
     if major:
-        gaps_summary += f"\n\nMAJOR GAPS ({len(major)}):\n"
-        gaps_summary += "\n".join([f"  - {g.get('field')}: {g.get('note', '')}" for g in major])
+        gaps_summary += f"\n\nMAJOR ({len(major)}):\n"
+        gaps_summary += "\n".join([f"  - {g.get('field')}: {g.get('note','')}" for g in major])
     if minor:
-        gaps_summary += f"\n\nMINOR GAPS ({len(minor)}):\n"
-        gaps_summary += "\n".join([f"  - {g.get('field')}: {g.get('note', '')}" for g in minor])
+        gaps_summary += f"\n\nMINOR ({len(minor)}):\n"
+        gaps_summary += "\n".join([f"  - {g.get('field')}: {g.get('note','')}" for g in minor])
 
-    prompt = f"""You are India's leading MSME procurement strategist. You have helped hundreds of small businesses navigate government tenders, close eligibility gaps, and win contracts against larger competitors.
+    prompt = f"""You are India's leading MSME procurement strategist.
 
-TENDER:
-- Title: {tender_data.get('title')}
-- Authority: {tender_data.get('issuing_authority')}
-- Sector: {tender_data.get('sector')}
-- Deadline: {tender_data.get('deadline', 'N/A')}
-- Min Turnover Required: Rs.{elig.get('min_turnover', 'N/A')} Lakhs
-- Experience Required: {elig.get('years_experience', 'N/A')} years
-- Required Certifications: {', '.join(elig.get('required_certifications', [])) or 'None'}
-- MSME Preference: {'Yes — MSMEs get price preference and EMD exemption' if elig.get('msme_preference') else 'No specific MSME preference mentioned'}
+TENDER: {tender_data.get('title')} | {tender_data.get('issuing_authority')}
+REQUIREMENTS: Min Turnover Rs.{elig.get('min_turnover','N/A')}L | Experience: {elig.get('years_experience','N/A')} years | MSME: {'Yes' if elig.get('msme_preference') else 'No'}
 
-COMPANY:
-- Name: {company_data.get('name')}
-- MSME Category: {company_data.get('msme_category', 'Not specified').upper()}
-- Annual Turnover: Rs.{company_data.get('annual_turnover', 0)} Lakhs
-- Years in Operation: {company_data.get('years_in_operation', 0)} years
-- Certifications: {', '.join(company_data.get('certifications', [])) or 'None listed'}
-- Available Documents: {', '.join(company_data.get('available_documents', [])) or 'None listed'}
+COMPANY: {company_data.get('name')} | Turnover: Rs.{company_data.get('annual_turnover',0)}L | Experience: {company_data.get('years_in_operation',0)} years | MSME: {company_data.get('msme_category','N/A')}
 
-IDENTIFIED GAPS:
-{gaps_summary if gaps_summary else 'No gaps identified — company appears fully eligible'}
+GAPS:{gaps_summary if gaps_summary else ' None — fully eligible'}
 
-Write a focused 4-paragraph strategic analysis:
-
-PARAGRAPH 1 — OVERALL VERDICT:
-Give a clear, honest assessment of the company's chances. Be specific about what works in their favour (MSME status, turnover level, sector experience) and what doesn't. State whether they should bid, bid with caveats, or wait.
-
-PARAGRAPH 2 — CRITICAL GAPS DEEP DIVE:
-For each disqualifying or major gap, explain exactly WHY it matters in this tender's context, what the evaluating committee will look for, and the realistic consequence of not addressing it. Be brutally honest — don't soften the blow if a gap is genuinely disqualifying.
-
-PARAGRAPH 3 — ACTION PLAN:
-Give 3-5 concrete, time-bound steps to address the gaps. Be specific:
-- For missing certifications: name the exact body (QCI, BIS, STQC, NSIC) and realistic timeline
-- For turnover shortfall: mention subcontracting, consortium, or waiting for next financial year
-- For experience gaps: mention joint ventures with experienced partners, or pilot project approach
-- For missing documents: specify exactly what to obtain and from where
-
-PARAGRAPH 4 — STRATEGIC ALTERNATIVES:
-If direct bidding is risky, offer 2-3 alternative strategies:
-- Consortium formation (who to partner with, how to structure)
-- Subcontracting arrangement
-- Applying for smaller lots/sub-tenders
-- Improving profile for the next tender cycle
-- MSME-specific schemes that could help (NSIC, Udyam benefits)
-
-Write with authority and empathy — this company is counting on your advice to make a real business decision.
+Write 4 paragraphs:
+1. Overall verdict — should they bid?
+2. Critical gaps and consequences
+3. Time-bound action plan (3-5 specific steps)
+4. Alternative strategies (consortium, subcontracting, NSIC schemes)
 """
     try:
-        return _call_groq(prompt, temperature=0.4, max_tokens=1500)
+        return _call_ai(prompt, temperature=0.4, max_tokens=1500)
     except Exception as e:
         return f"AI analysis failed: {str(e)}"
